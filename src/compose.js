@@ -20,3 +20,11 @@ export default function compose(...funcs) {
 
   return funcs.reduce((a, b) => (...args) => a(b(...args)))
 }
+        // 0  1
+[].reduce((a, b) => {
+  return (...args) => {
+    return a(
+      b(...args)
+    );
+  };
+});

@@ -1,6 +1,6 @@
 function bindActionCreator(actionCreator, dispatch) {
   return function() {
-    return dispatch(actionCreator.apply(this, arguments))
+    return dispatch(actionCreator.apply(this, arguments)) // actionCreator.apply(this, arguments) 生成一个 action 对像
   }
 }
 
@@ -26,11 +26,12 @@ function bindActionCreator(actionCreator, dispatch) {
  * function.
  */
 export default function bindActionCreators(actionCreators, dispatch) {
+  // actionCreators 传入啥就返回啥
   if (typeof actionCreators === 'function') {
-    return bindActionCreator(actionCreators, dispatch)
+    return bindActionCreator(actionCreators, dispatch) // 返回的函数会执行dispatch
   }
 
-  if (typeof actionCreators !== 'object' || actionCreators === null) {
+  if (typeof actionCreators !== 'object' || actionCreators === null) { // 传入除对象或函数 报错
     throw new Error(
       `bindActionCreators expected an object or a function, instead received ${
         actionCreators === null ? 'null' : typeof actionCreators
@@ -39,14 +40,15 @@ export default function bindActionCreators(actionCreators, dispatch) {
     )
   }
 
-  const keys = Object.keys(actionCreators)
+  const keys = Object.keys(actionCreators) // actionCreators 是一个个对象时
   const boundActionCreators = {}
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i]
     const actionCreator = actionCreators[key]
-    if (typeof actionCreator === 'function') {
+    if (typeof actionCreator === 'function') { // 这个对象中的函数 返回的是一个标准的 action 对象 {type: 'TYPE', data: data}
+      // bindActionCreator 返回一个函数
       boundActionCreators[key] = bindActionCreator(actionCreator, dispatch)
     }
   }
-  return boundActionCreators
+  return boundActionCreators // 返回一个对象 对象中是对应的action
 }

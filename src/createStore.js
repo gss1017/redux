@@ -28,8 +28,19 @@ import isPlainObject from './utils/isPlainObject'
  * @returns {Store} A Redux store that lets you read the state, dispatch actions
  * and subscribe to changes.
  */
+
+/*
+* 传入三个参数
+*
+* @param reducer | function
+* @param preloadedState | object
+* @param enhancer | redux middleware 用于增强redux
+*
+* */
 export default function createStore(reducer, preloadedState, enhancer) {
+  // 当 prelaodedState 为 函数且 enhancer 为 undefined
   if (typeof preloadedState === 'function' && typeof enhancer === 'undefined') {
+    // 当 enhancer 为空的时候 preloadedState 不可以是函数
     enhancer = preloadedState
     preloadedState = undefined
   }
@@ -38,23 +49,24 @@ export default function createStore(reducer, preloadedState, enhancer) {
     if (typeof enhancer !== 'function') {
       throw new Error('Expected the enhancer to be a function.')
     }
-
+    // enhancer 如果有值 且必须是一个function
+    // enhancer 会将 createStore 进行一番修饰
     return enhancer(createStore)(reducer, preloadedState)
   }
 
-  if (typeof reducer !== 'function') {
+  if (typeof reducer !== 'function') { //reducer 必须是一个函数
     throw new Error('Expected the reducer to be a function.')
   }
 
-  let currentReducer = reducer
-  let currentState = preloadedState
-  let currentListeners = []
+  let currentReducer = reducer // 当前的reducer
+  let currentState = preloadedState // 当前的状态
+  let currentListeners = [] // 订阅的监听函数
   let nextListeners = currentListeners
   let isDispatching = false
 
   function ensureCanMutateNextListeners() {
     if (nextListeners === currentListeners) {
-      nextListeners = currentListeners.slice()
+      nextListeners = currentListeners.slice() // 返回一个新的数组
     }
   }
 
@@ -64,7 +76,7 @@ export default function createStore(reducer, preloadedState, enhancer) {
    * @returns {any} The current state tree of your application.
    */
   function getState() {
-    if (isDispatching) {
+    if (isDispatching) { // dispatching 中无法获取state
       throw new Error(
         'You may not call store.getState() while the reducer is executing. ' +
           'The reducer has already received the state as an argument. ' +
@@ -98,12 +110,12 @@ export default function createStore(reducer, preloadedState, enhancer) {
    * @param {Function} listener A callback to be invoked on every dispatch.
    * @returns {Function} A function to remove this change listener.
    */
-  function subscribe(listener) {
-    if (typeof listener !== 'function') {
+  function subscribe(listener) { // 订阅函数
+    if (typeof listener !== 'function') { // listener 订阅的监听函数
       throw new Error('Expected the listener to be a function.')
     }
 
-    if (isDispatching) {
+    if (isDispatching) { // dispatching 无法订阅
       throw new Error(
         'You may not call store.subscribe() while the reducer is executing. ' +
           'If you would like to be notified after the store has been updated, subscribe from a ' +
@@ -114,15 +126,15 @@ export default function createStore(reducer, preloadedState, enhancer) {
 
     let isSubscribed = true
 
-    ensureCanMutateNextListeners()
-    nextListeners.push(listener)
+    ensureCanMutateNextListeners() // 给 nextListeners 返回个一个新的数组
+    nextListeners.push(listener) // 将订阅的函数保存到 nextListeners
 
     return function unsubscribe() {
-      if (!isSubscribed) {
+      if (!isSubscribed) { // 一个订阅函数只能触发一次取消订阅
         return
       }
 
-      if (isDispatching) {
+      if (isDispatching) { // 发送 action 时调用 会报错
         throw new Error(
           'You may not unsubscribe from a store listener while the reducer is executing. ' +
             'See https://redux.js.org/api-reference/store#subscribe(listener) for more details.'
@@ -131,6 +143,7 @@ export default function createStore(reducer, preloadedState, enhancer) {
 
       isSubscribed = false
 
+      // 如果当前的 currentListeners 和 nextListeners 相同 给 nextListeners = currentListeners.slice();
       ensureCanMutateNextListeners()
       const index = nextListeners.indexOf(listener)
       nextListeners.splice(index, 1)
@@ -162,7 +175,7 @@ export default function createStore(reducer, preloadedState, enhancer) {
    * Note that, if you use a custom middleware, it may wrap `dispatch()` to
    * return something else (for example, a Promise you can await).
    */
-  function dispatch(action) {
+  function dispatch(action) { // 发送 action 的函数
     if (!isPlainObject(action)) {
       throw new Error(
         'Actions must be plain objects. ' +
@@ -170,14 +183,14 @@ export default function createStore(reducer, preloadedState, enhancer) {
       )
     }
 
-    if (typeof action.type === 'undefined') {
+    if (typeof action.type === 'undefined') { // 传入的action内部的 type 必须有值
       throw new Error(
         'Actions may not have an undefined "type" property. ' +
           'Have you misspelled a constant?'
       )
     }
 
-    if (isDispatching) {
+    if (isDispatching) { // 不可以给 reducer 传递action
       throw new Error('Reducers may not dispatch actions.')
     }
 
@@ -188,13 +201,15 @@ export default function createStore(reducer, preloadedState, enhancer) {
       isDispatching = false
     }
 
+    // 每次 dispatch nextListeners 都会将数据与 currentListeners 同步
     const listeners = (currentListeners = nextListeners)
+    // 同时会将所有的订阅函数发布
     for (let i = 0; i < listeners.length; i++) {
       const listener = listeners[i]
       listener()
     }
 
-    return action
+    return action // 默认返回传入的 action
   }
 
   /**
@@ -207,12 +222,14 @@ export default function createStore(reducer, preloadedState, enhancer) {
    * @param {Function} nextReducer The reducer for the store to use instead.
    * @returns {void}
    */
+
+  // react 中的redux 热更新 可以通过 replaceReducer 来实现
   function replaceReducer(nextReducer) {
-    if (typeof nextReducer !== 'function') {
+    if (typeof nextReducer !== 'function') { // reducer 必须为函数
       throw new Error('Expected the nextReducer to be a function.')
     }
 
-    currentReducer = nextReducer
+    currentReducer = nextReducer // 替换 reducer
     dispatch({ type: ActionTypes.REPLACE })
   }
 
@@ -233,7 +250,7 @@ export default function createStore(reducer, preloadedState, enhancer) {
        * be used to unsubscribe the observable from the store, and prevent further
        * emission of values from the observable.
        */
-      subscribe(observer) {
+      subscribe(observer) { // observer 必须为对象
         if (typeof observer !== 'object' || observer === null) {
           throw new TypeError('Expected the observer to be an object.')
         }
@@ -250,7 +267,7 @@ export default function createStore(reducer, preloadedState, enhancer) {
       },
 
       [$$observable]() {
-        return this
+        return this // 指向store
       }
     }
   }

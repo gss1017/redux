@@ -41,7 +41,7 @@ function getUnexpectedStateShapeWarningMessage(
       `keys: "${reducerKeys.join('", "')}"`
     )
   }
-
+  // 判断 state 中的key 与 reducers 中的 key 是否一致
   const unexpectedKeys = Object.keys(inputState).filter(
     key => !reducers.hasOwnProperty(key) && !unexpectedKeyCache[key]
   )
@@ -64,9 +64,9 @@ function getUnexpectedStateShapeWarningMessage(
 
 function assertReducerShape(reducers) {
   Object.keys(reducers).forEach(key => {
-    const reducer = reducers[key]
+    const reducer = reducers[key] // 将reducers中的 reducer 逐一取出
     const initialState = reducer(undefined, { type: ActionTypes.INIT })
-
+    // reducer 必须赋一个初值
     if (typeof initialState === 'undefined') {
       throw new Error(
         `Reducer "${key}" returned undefined during initialization. ` +
@@ -77,6 +77,7 @@ function assertReducerShape(reducers) {
       )
     }
 
+   // 对于未知的action, reducer 必须返回一个有意义的值 默认返回上一次的state
     if (
       typeof reducer(undefined, {
         type: ActionTypes.PROBE_UNKNOWN_ACTION()
@@ -112,23 +113,27 @@ function assertReducerShape(reducers) {
  * @returns {Function} A reducer function that invokes every reducer inside the
  * passed object, and builds a state object with the same shape.
  */
+// 传入一个包含 reducer 的对象
 export default function combineReducers(reducers) {
+  // 获取该对象的key
   const reducerKeys = Object.keys(reducers)
   const finalReducers = {}
-  for (let i = 0; i < reducerKeys.length; i++) {
-    const key = reducerKeys[i]
+  for (let i = 0; i < reducerKeys.length; i++) { // 遍历reducerKeys
+    const key = reducerKeys[i] // 取出当前的 key 值
 
-    if (process.env.NODE_ENV !== 'production') {
-      if (typeof reducers[key] === 'undefined') {
+    if (process.env.NODE_ENV !== 'production') { // 非生产环境
+      if (typeof reducers[key] === 'undefined') { // 对象中的reducer必须定义
         warning(`No reducer provided for key "${key}"`)
       }
     }
 
-    if (typeof reducers[key] === 'function') {
-      finalReducers[key] = reducers[key]
+    if (typeof reducers[key] === 'function') { // reducer 是函数
+      finalReducers[key] = reducers[key] // 将其保存到 finalReducers
     }
   }
-  const finalReducerKeys = Object.keys(finalReducers)
+  // 以上步骤是将 reducers 中的属性 浅拷贝 到 finalReducers
+  // finalReducers 装有 reducer 函数的对象
+  const finalReducerKeys = Object.keys(finalReducers) // 取出finalReducers 中的key
 
   let unexpectedKeyCache
   if (process.env.NODE_ENV !== 'production') {
@@ -137,14 +142,15 @@ export default function combineReducers(reducers) {
 
   let shapeAssertionError
   try {
+    // 检测 reducer 默认返回的是否是 undefined
     assertReducerShape(finalReducers)
-  } catch (e) {
+  } catch (e) { // 返回 undefined
     shapeAssertionError = e
   }
 
-  return function combination(state = {}, action) {
+  return function combination(state = {}, action) { // createStore 中会保存每一次返回的 state
     if (shapeAssertionError) {
-      throw shapeAssertionError
+      throw shapeAssertionError // reducer 内部返回 undefined 会抛出异常
     }
 
     if (process.env.NODE_ENV !== 'production') {
@@ -162,16 +168,16 @@ export default function combineReducers(reducers) {
     let hasChanged = false
     const nextState = {}
     for (let i = 0; i < finalReducerKeys.length; i++) {
-      const key = finalReducerKeys[i]
-      const reducer = finalReducers[key]
-      const previousStateForKey = state[key]
-      const nextStateForKey = reducer(previousStateForKey, action)
-      if (typeof nextStateForKey === 'undefined') {
-        const errorMessage = getUndefinedStateErrorMessage(key, action)
+      const key = finalReducerKeys[i] // 取出 finalReducerKeys 的 key
+      const reducer = finalReducers[key] // 获取 reducer
+      const previousStateForKey = state[key] // 获取上一次 state 中 key的值 保存起来 首次undefined
+      const nextStateForKey = reducer(previousStateForKey, action) // 获取 reducer 中 state
+      if (typeof nextStateForKey === 'undefined') { // reducer 返回的state 为 undefined 就会抛出异常
+        const errorMessage = getUndefinedStateErrorMessage(key, action) // 对应的 action 返回的是 undefined
         throw new Error(errorMessage)
       }
-      nextState[key] = nextStateForKey
-      hasChanged = hasChanged || nextStateForKey !== previousStateForKey
+      nextState[key] = nextStateForKey // 将本次 reducer 返回的状态保存起来
+      hasChanged = hasChanged || nextStateForKey !== previousStateForKey // 循环中 两次返回的对象只要有一次不同 hasChanged 就为true
     }
     return hasChanged ? nextState : state
   }
